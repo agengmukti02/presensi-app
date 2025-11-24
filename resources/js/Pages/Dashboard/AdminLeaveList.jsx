@@ -1,19 +1,25 @@
 import React from "react";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import DashboardLayout from "../../Layouts/DashboardLayout";
 
-export default function AdminLeaveList({ leaveRequests = [] }) {
-    const { put, processing } = useForm();
+export default function AdminLeaveList({ leaveRequests = [], flash = {} }) {
+    const [processing, setProcessing] = React.useState(false);
 
     const handleApprove = (id) => {
         if (confirm("Setujui pengajuan izin ini?")) {
-            put(`/api/leave-requests/${id}/approve`);
+            setProcessing(true);
+            router.put(`/izin/approve/${id}`, {}, {
+                onFinish: () => setProcessing(false),
+            });
         }
     };
 
     const handleReject = (id) => {
         if (confirm("Tolak pengajuan izin ini?")) {
-            put(`/api/leave-requests/${id}/reject`);
+            setProcessing(true);
+            router.put(`/izin/reject/${id}`, {}, {
+                onFinish: () => setProcessing(false),
+            });
         }
     };
 
@@ -53,9 +59,15 @@ export default function AdminLeaveList({ leaveRequests = [] }) {
                                         {request.start_date} s/d {request.end_date}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${request.type === 'sakit' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${request.type === 'sakit' ? 'bg-yellow-100 text-yellow-800' :
+                                                request.type === 'izin' ? 'bg-blue-100 text-blue-800' :
+                                                    request.type === 'dd' ? 'bg-purple-100 text-purple-800' :
+                                                        'bg-indigo-100 text-indigo-800'
                                             }`}>
-                                            {request.type.toUpperCase()}
+                                            {request.type === 'izin' ? 'IZIN' :
+                                                request.type === 'sakit' ? 'SAKIT' :
+                                                    request.type === 'dd' ? 'DINAS DALAM' :
+                                                        'DINAS LUAR'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
@@ -63,8 +75,8 @@ export default function AdminLeaveList({ leaveRequests = [] }) {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${request.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                request.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                    'bg-gray-100 text-gray-800'
+                                            request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                'bg-gray-100 text-gray-800'
                                             }`}>
                                             {request.status.toUpperCase()}
                                         </span>

@@ -53,7 +53,7 @@ class ExportController extends Controller
             return $row;
         });
 
-        return Excel::download(new AttendanceExport($rows, $headings), "presensi_{$month}_{$year}.xlsx");
+        return Excel::download(new AttendanceExport($rows, $headings, $month, $year), "presensi_{$month}_{$year}.xlsx");
     }
 
     public function exportPdf($month, $year)
@@ -101,6 +101,8 @@ class ExportController extends Controller
             'rows' => $rows
         ]);
 
-        return $pdf->setPaper('a4', 'landscape')->download("presensi_{$month}_{$year}.pdf");
+        return $pdf->setPaper('legal', 'landscape')
+                   ->setOption('isRemoteEnabled', true)
+                   ->download("presensi_{$month}_{$year}.pdf");
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
-use App\Models\leave_requests;
+use App\Models\LeaveRequest;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,7 @@ class LeaveRequestController extends Controller
         DB::beginTransaction();
 
         try {
-            $leaveRequest = leave_requests::findOrFail($id);
+            $leaveRequest = LeaveRequest::findOrFail($id);
             $leaveRequest->status = 'approved';
             $leaveRequest->approved_by = $request->user()->id;
             $leaveRequest->save();
@@ -39,10 +39,10 @@ class LeaveRequestController extends Controller
 
             DB::commit();
 
-            return response()->json(['message' => 'Leave request approved successfully']);
+            return back()->with('success', 'Pengajuan izin berhasil disetujui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error approving leave request', 'error' => $e->getMessage()], 500);
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -53,7 +53,7 @@ class LeaveRequestController extends Controller
 
     public function approvalList()
     {
-        $leaveRequests = leave_requests::with('employee')
+        $leaveRequests = LeaveRequest::with('employee')
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -66,41 +66,46 @@ class LeaveRequestController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'tipe' => 'required|in:izin,sakit,dd,dl',
             'tanggal' => 'required|date',
-            'keterangan' => 'required|string',
+            'keterangan' => 'required|string|max:500',
         ]);
 
-        // Assuming logged in user is linked to an employee
-        // For now, let's assume user->id maps to employee->user_id or similar, 
-        // or just pick the first employee for demo if not linked.
-        // Ideally: $employee = $request->user()->employee;
-        // But Employee model has user() relationship.
-        
-        $employee = \App\Models\Employee::where('id', $request->user()->id)->first(); // Simplification
+        $employee = \App\Models\Employee::where('id', $request->user()->id)->first();
         if (!$employee) {
-             // Fallback or error
-             // For demo purposes, let's just use ID 1 if not found
              $employee = \App\Models\Employee::first();
         }
 
-        leave_requests::create([
+        LeaveRequest::create([
             'employee_id' => $employee->id,
             'start_date' => $request->tanggal,
-            'end_date' => $request->tanggal, // Single day for now based on form
-            'type' => 'izin', // Default
+            'end_date' => $request->tanggal,
+            'type' => $request->tipe,
             'reason' => $request->keterangan,
             'status' => 'pending',
         ]);
 
-        return redirect('/dashboard')->with('success', 'Pengajuan izin berhasil dikirim.');
+        $tipeName = [
+            'izin' => 'Izin',
+            'sakit' => 'Sakit',
+            'dd' => 'Dinas Dalam',
+            'dl' => 'Dinas Luar'
+        ][$request->tipe];
+
+        return redirect('/dashboard')->with('success', "Pengajuan {$tipeName} berhasil dikirim.");
     }
 
-    public function reject($id)
+    public function reject(Request $request, $id)
     {
-        $leaveRequest = leave_requests::findOrFail($id);
-        $leaveRequest->status = 'rejected';
-        $leaveRequest->save();
+        try {
+            $leaveRequest = LeaveRequest::findOrFail($id);
+            $leaveRequest->status = 'rejected';
+            $leaveRequest->approved_by = $request->user()->id;
+            $leaveRequest->save();
 
-        return back()->with('success', 'Pengajuan izin ditolak.');
+            return back()->with('success', 'Pengajuan izin berhasil ditolak.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 }

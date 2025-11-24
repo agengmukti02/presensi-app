@@ -36,13 +36,4 @@ class HandleInertiaRequests extends Middleware
             ],
         ];
     }
-
-    public function handle($request, Closure $next, $role)
-    {
-        if (! $request->user() || $request->user()->role !== $role) {
-            abort(403);
-        }
-        return $next($request);
-    }
-
 }

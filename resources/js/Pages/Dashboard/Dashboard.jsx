@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Head, router } from "@inertiajs/react";
-import DashboardLayout from "../Layouts/DashboardLayout";
+import DashboardLayout from "../../Layouts/DashboardLayout";
 import AttendanceTable from "./AttendanceTable";
 import SearchForm from "./SearchForm";
 

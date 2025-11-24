@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('employee_id');
             $table->date('start_date');
             $table->date('end_date');
-            $table->enum('type', ['izin','sakit'])->default('izin');
+            $table->enum('type', ['izin','sakit','dd','dl'])->default('izin');
             $table->text('reason');
             $table->enum('status', ['pending','approved','rejected'])->default('pending');
             $table->unsignedBigInteger('approved_by')->nullable();

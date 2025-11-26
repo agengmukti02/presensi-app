@@ -1,6 +1,7 @@
 import React from "react";
 import Sidebar from "../Pages/Dashboard/Sidebar";
 import { usePage, router } from "@inertiajs/react";
+import ApplicationLogo from "../Components/ApplicationLogo";
 
 export default function DashboardLayout({ children }) {
     const { props } = usePage();
@@ -15,7 +16,10 @@ export default function DashboardLayout({ children }) {
 
             <main className="flex-1 flex flex-col overflow-hidden">
                 <header className="px-6 py-4 bg-white shadow-sm border-b flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Dashboard Presensi</h2>
+                    <div className="flex items-center gap-3">
+                        <ApplicationLogo className="h-8 w-8" />
+                        <h2 className="text-xl font-semibold">Dashboard Presensi</h2>
+                    </div>
                     <div className="flex items-center gap-4">
                         <div className="text-gray-600">
                             Halo, <span className="font-bold">{props.auth.user.name}</span>

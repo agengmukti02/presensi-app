@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\Attendance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -258,6 +259,46 @@ class AttendanceController extends Controller
         ];
     }
 
+    private function getReportDataForEmployee($employeeId, $month, $year)
+    {
+        $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
+        $days = range(1, $daysInMonth);
+
+        $employee = Employee::with(['attendances' => function ($query) use ($month, $year) {
+            $query->whereMonth('date', $month)
+                ->whereYear('date', $year);
+        }])->findOrFail($employeeId);
+
+        $attendanceMap = $employee->attendances->keyBy(function ($attendance) {
+            return (int) Carbon::parse($attendance->date)->format('d');
+        });
+
+        $row = [
+            'no' => 1,
+            'name' => $employee->nama,
+            'nip' => $employee->nip,
+        ];
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $key = 'd' . $day;
+            if (isset($attendanceMap[$day])) {
+                $att = $attendanceMap[$day];
+                if ($att->status === 'hadir') {
+                    $row[$key] = $att->time_in ? Carbon::parse($att->time_in)->format('H:i') : 'Hadir';
+                } else {
+                    $row[$key] = $att->status;
+                }
+            } else {
+                $row[$key] = null;
+            }
+        }
+
+        return [
+            'days' => $days,
+            'rows' => [$row],
+        ];
+    }
+
     private function getReportData($month, $year)
     {
         $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
@@ -265,7 +306,7 @@ class AttendanceController extends Controller
 
         $employees = Employee::with(['attendances' => function ($query) use ($month, $year) {
             $query->whereMonth('date', $month)
-                  ->whereYear('date', $year);
+                ->whereYear('date', $year);
         }])->get();
 
         $rows = $employees->map(function ($employee, $index) use ($daysInMonth, $year, $month) {
@@ -300,5 +341,78 @@ class AttendanceController extends Controller
             'days' => $days,
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * Handle check-in (presensi hadir)
+     */
+    public function checkIn(Request $request)
+    {
+        $user = auth()->user();
+
+        // Validasi user memiliki data employee
+        if (!$user->employee) {
+            return back()->withErrors(['message' => 'Anda tidak terdaftar sebagai pegawai.']);
+        }
+
+        $employee = $user->employee;
+
+        // Cek apakah sudah check-in hari ini
+        if (Attendance::hasCheckedInToday($employee->id)) {
+            return back()->withErrors(['message' => 'Anda sudah hadir hari ini.']);
+        }
+
+        try {
+            // Ambil waktu sekarang saat tombol diklik
+            $now = Carbon::now('Asia/Jakarta'); // Set timezone Indonesia (ubah sesuai kebutuhan)
+
+            // Default jam pulang: 16:00 (ubah sesuai kebutuhan)
+            $defaultCheckoutTime = '16:00:00';
+
+            // Buat record attendance baru dengan time_out default
+            $attendance = Attendance::create([
+                'employee_id' => $employee->id,
+                'date' => $now->format('Y-m-d'),
+                'time_in' => $now->format('H:i:s'),
+                'time_out' => $defaultCheckoutTime, // Set default jam pulang
+                'status' => 'hadir',
+            ]);
+
+            return back()->with([
+                'flash' => [
+                    'success' => true,
+                    'message' => 'Presensi berhasil dicatat.',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return back()->withErrors(['message' => 'Terjadi kesalahan saat menyimpan presensi: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Cek status presensi hari ini
+     */
+    public function statusHariIni(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user->employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak terdaftar sebagai pegawai.'
+            ], 403);
+        }
+
+        $employee = $user->employee;
+        $todayAttendance = Attendance::getTodayAttendance($employee->id);
+
+        return response()->json([
+            'success' => true,
+            'hasCheckedIn' => $todayAttendance !== null,
+            'attendance' => $todayAttendance,
+            'time_in_formatted' => $todayAttendance
+                ? Carbon::parse($todayAttendance->time_in)->format('H:i')
+                : null,
+        ]);
     }
 }

@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'Asia/Jakarta', // Timezone Indonesia WIB (ubah sesuai kebutuhan: Asia/Makassar untuk WITA, Asia/Jayapura untuk WIT)
 
     /*
     |--------------------------------------------------------------------------

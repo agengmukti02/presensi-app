@@ -12,7 +12,7 @@ class AttendanceController extends Controller
     public function dashboard(Request $request)
     {
         $user = auth()->user();
-
+        
         // Redirect berdasarkan role
         if ($user->role === 'admin') {
             return $this->adminDashboard($request);
@@ -22,47 +22,47 @@ class AttendanceController extends Controller
             abort(403, 'Role tidak dikenali.');
         }
     }
-
+    
     private function adminDashboard(Request $request)
     {
         $date = $request->input('date', now()->format('Y-m-d'));
         $selectedDate = Carbon::parse($date);
-
+        
         // Hitung statistik untuk hari ini atau tanggal yang dipilih
         $totalPegawai = Employee::count();
-
+        
         // Hitung pegawai hadir
         $hadir = \App\Models\Attendance::whereDate('date', $selectedDate)
             ->where('status', 'hadir')
             ->count();
-
+        
         // Hitung pegawai sakit, izin dari attendance
         $sakit = \App\Models\Attendance::whereDate('date', $selectedDate)
             ->where('status', 'sakit')
             ->count();
-
+            
         $izin = \App\Models\Attendance::whereDate('date', $selectedDate)
             ->where('status', 'izin')
             ->count();
-
+        
         // Hitung leave requests yang approved untuk hari ini
         $leaveRequests = \App\Models\LeaveRequest::where('status', 'approved')
             ->whereDate('start_date', '<=', $selectedDate)
             ->whereDate('end_date', '>=', $selectedDate)
             ->get();
-
+        
         $izinApproved = $leaveRequests->where('type', 'izin')->count();
         $sakitApproved = $leaveRequests->where('type', 'sakit')->count();
         $dinasDalam = $leaveRequests->where('type', 'dd')->count();
         $dinasLuar = $leaveRequests->where('type', 'dl')->count();
-
+        
         // Total izin dan sakit (dari attendance + leave request)
         $totalIzin = $izin + $izinApproved;
         $totalSakit = $sakit + $sakitApproved;
-
+        
         // Hitung yang tidak hadir (tidak ada record)
         $tidakHadir = $totalPegawai - ($hadir + $totalSakit + $totalIzin + $dinasDalam + $dinasLuar);
-
+        
         return \Inertia\Inertia::render('Dashboard/AdminDashboard', [
             'stats' => [
                 'totalPegawai' => $totalPegawai,
@@ -76,14 +76,14 @@ class AttendanceController extends Controller
             'selectedDate' => $selectedDate->format('Y-m-d'),
         ]);
     }
-
+    
     private function pegawaiDashboard(Request $request)
     {
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
-
+        
         $user = auth()->user();
-
+        
         // Cek apakah user memiliki data employee
         if (!$user->employee) {
             // Redirect ke halaman error atau tampilkan pesan
@@ -91,17 +91,13 @@ class AttendanceController extends Controller
                 'error' => 'Anda tidak terdaftar sebagai pegawai. Silakan hubungi administrator.'
             ]);
         }
-
+        
         $employee = $user->employee;
-
+        
         $data = $this->getReportDataForEmployee($employee->id, $month, $year);
-
+        
         // Hitung statistik pribadi
         $stats = $this->getEmployeeStats($employee->id, $month, $year);
-
-        // Cek status presensi hari ini
-        $todayAttendance = Attendance::getTodayAttendance($employee->id);
-        $hasCheckedInToday = $todayAttendance !== null;
 
         return \Inertia\Inertia::render('Dashboard/PegawaiDashboard', [
             'days' => $data['days'],
@@ -110,29 +106,27 @@ class AttendanceController extends Controller
             'currentYear' => (int)$year,
             'employee' => $employee,
             'stats' => $stats,
-            'hasCheckedInToday' => $hasCheckedInToday,
-            'todayAttendance' => $todayAttendance,
         ]);
     }
-
+    
     private function getEmployeeStats($employeeId, $month, $year)
     {
         // Hitung total hari dalam bulan
         $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
-
+        
         // Ambil semua attendance untuk bulan ini
         $attendances = \App\Models\Attendance::where('employee_id', $employeeId)
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->get();
-
+        
         // Hitung statistik
         $hadir = $attendances->where('status', 'hadir')->count();
         $sakit = $attendances->where('status', 'sakit')->count();
         $izin = $attendances->where('status', 'izin')->count();
         $dinasDalam = $attendances->where('status', 'dd')->count();
         $dinasLuar = $attendances->where('status', 'dl')->count();
-
+        
         // Hitung keterlambatan (hadir setelah jam 08:00)
         $terlambat = $attendances->filter(function ($att) {
             if ($att->status === 'hadir' && $att->time_in) {
@@ -142,7 +136,7 @@ class AttendanceController extends Controller
             }
             return false;
         })->count();
-
+        
         // Hitung tidak hadir (hari kerja - semua kehadiran)
         // Asumsi: Sabtu & Minggu bukan hari kerja
         $workDays = 0;
@@ -152,13 +146,13 @@ class AttendanceController extends Controller
                 $workDays++;
             }
         }
-
+        
         $totalKehadiran = $hadir + $sakit + $izin + $dinasDalam + $dinasLuar;
         $tidakHadir = max(0, $workDays - $totalKehadiran);
-
+        
         // Hitung persentase kehadiran
         $persentaseKehadiran = $workDays > 0 ? round(($hadir / $workDays) * 100, 1) : 0;
-
+        
         return [
             'hadir' => $hadir,
             'sakit' => $sakit,
@@ -176,17 +170,17 @@ class AttendanceController extends Controller
     {
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
-
+        
         $user = auth()->user();
-
+        
         if (!$user->employee) {
             abort(403, 'Anda tidak terdaftar sebagai pegawai.');
         }
-
+        
         $employee = $user->employee;
-
+        
         $data = $this->getReportDataForEmployee($employee->id, $month, $year);
-
+        
         return \Inertia\Inertia::render('Dashboard/PresensiPegawai', [
             'days' => $data['days'],
             'rows' => $data['rows'],
@@ -195,21 +189,21 @@ class AttendanceController extends Controller
             'employee' => $employee,
         ]);
     }
-
+    
     public function presensiAdmin(Request $request)
     {
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
         $employeeId = $request->input('employee_id');
-
+        
         $employees = Employee::orderBy('nama')->get();
-
+        
         if ($employeeId) {
             $data = $this->getReportDataForEmployee($employeeId, $month, $year);
         } else {
             $data = $this->getReportData($month, $year);
         }
-
+        
         return \Inertia\Inertia::render('Dashboard/PresensiAdmin', [
             'days' => $data['days'],
             'rows' => $data['rows'],
@@ -223,6 +217,46 @@ class AttendanceController extends Controller
     public function monthlyReport($month, $year)
     {
         return response()->json($this->getReportData($month, $year));
+    }
+    
+    private function getReportDataForEmployee($employeeId, $month, $year)
+    {
+        $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
+        $days = range(1, $daysInMonth);
+
+        $employee = Employee::with(['attendances' => function ($query) use ($month, $year) {
+            $query->whereMonth('date', $month)
+                  ->whereYear('date', $year);
+        }])->findOrFail($employeeId);
+
+        $attendanceMap = $employee->attendances->keyBy(function ($attendance) {
+            return (int) Carbon::parse($attendance->date)->format('d');
+        });
+
+        $row = [
+            'no' => 1,
+            'name' => $employee->nama,
+            'nip' => $employee->nip,
+        ];
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $key = 'd' . $day;
+            if (isset($attendanceMap[$day])) {
+                $att = $attendanceMap[$day];
+                if ($att->status === 'hadir') {
+                    $row[$key] = $att->time_in ? Carbon::parse($att->time_in)->format('H:i') : 'Hadir';
+                } else {
+                    $row[$key] = $att->status;
+                }
+            } else {
+                $row[$key] = null;
+            }
+        }
+
+        return [
+            'days' => $days,
+            'rows' => [$row],
+        ];
     }
 
     private function getReportDataForEmployee($employeeId, $month, $year)

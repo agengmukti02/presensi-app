@@ -23,7 +23,7 @@ export default function Sidebar() {
                 </div>
             </div>
 
-
+            
             <nav className="flex-1 p-4 space-y-2">
                 {links.map((link) => {
                     if (!link.roles.includes(user.role)) return null;

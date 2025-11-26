@@ -19,6 +19,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'nip',
         'email',
         'password',
         'role',
@@ -49,5 +50,15 @@ class User extends Authenticatable
 
     public function isAdmin(){ return $this->role === 'admin'; }
     public function isPegawai(){ return $this->role === 'pegawai'; }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class, 'user_id', 'id');
+    }
+
+    public function isEmployee()
+    {
+        return $this->employee !== null;
+    }
 
 }

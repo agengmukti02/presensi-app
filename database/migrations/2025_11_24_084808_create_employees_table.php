@@ -13,16 +13,14 @@ return new class extends Migration
     {
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
-            $table->string('nip', 18);
+            $table->string('nip', 18)->unique();
             $table->string('nama');
-            $table->string('pangkat');
-            $table->string('golongan');
-            $table->string('jabatan');
-            $table->enum('status_pegawai', ['PNS', 'PPPK']);
-            $table->string('kedudukan');
+            $table->string('pangkat')->nullable();
+            $table->string('golongan')->nullable();
+            $table->string('jabatan')->nullable();
+            $table->enum('status_pegawai', ['PNS', 'PPPK'])->nullable();
+            $table->string('kedudukan')->nullable();
             $table->timestamps();
-
-            $table->foreign('id')->references('id')->on('users')->onDelete('set null');
         });
     }
 

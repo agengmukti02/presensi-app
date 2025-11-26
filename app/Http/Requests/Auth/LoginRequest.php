@@ -27,7 +27,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'nip' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -41,13 +41,32 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $input = $this->input('nip');
+        $password = $this->input('password');
+        
+        $authenticated = false;
+        
+        // Cek apakah input adalah email (untuk admin)
+        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+            // Login menggunakan email untuk admin
+            $authenticated = Auth::attempt(['email' => $input, 'password' => $password], $this->boolean('remember'));
+            \Log::info('Login attempt with email', ['email' => $input, 'success' => $authenticated]);
+        } else {
+            // Login menggunakan NIP untuk pegawai
+            $authenticated = Auth::attempt(['nip' => $input, 'password' => $password], $this->boolean('remember'));
+            \Log::info('Login attempt with NIP', ['nip' => $input, 'success' => $authenticated]);
+        }
+        
+        if (!$authenticated) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'nip' => 'NIP/Email atau password salah.',
             ]);
         }
+        
+        // Check if user is authenticated after attempt
+        \Log::info('After authentication', ['auth_check' => Auth::check(), 'user_id' => Auth::id()]);
 
         RateLimiter::clear($this->throttleKey());
     }
@@ -68,7 +87,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'nip' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -80,6 +99,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('nip')).'|'.$this->ip());
     }
 }

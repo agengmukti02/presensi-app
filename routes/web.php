@@ -8,12 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect('/login');
 });
 
 Route::get('/dashboard', [AttendanceController::class, 'dashboard'])
@@ -27,6 +22,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth','role:admin'])->group(function(){
+   Route::get('/presensi/admin', [AttendanceController::class, 'presensiAdmin'])->name('presensi.admin');
    Route::get('/izin/create', [LeaveRequestController::class, 'create'])->name('izin.create');
    Route::post('/izin/store', [LeaveRequestController::class, 'store'])->name('izin.store');
    Route::get('/izin/approval', [LeaveRequestController::class, 'approvalList'])->name('izin.approval');
@@ -35,6 +31,7 @@ Route::middleware(['auth','role:admin'])->group(function(){
 });
 
 Route::middleware(['auth','role:pegawai'])->group(function(){
+   Route::get('/presensi/pegawai', [AttendanceController::class, 'presensiPegawai'])->name('presensi.pegawai');
    Route::get('/izin/create', [LeaveRequestController::class, 'create'])->name('izin.create');
    Route::post('/izin/store', [LeaveRequestController::class, 'store'])->name('izin.store');
 });

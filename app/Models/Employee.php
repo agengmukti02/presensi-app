@@ -9,11 +9,11 @@ class Employee extends Model
 {
   use HasFactory;
 
-  protected $fillable = ['nip','nama','pangkat','golongan','jabatan','status_pegawai','kedudukan'];
+  protected $fillable = ['user_id','nip','nama','pangkat','golongan','jabatan','status_pegawai','kedudukan'];
   
   public function user()
   { 
-    return $this->belongsTo(User::class); 
+    return $this->belongsTo(User::class, 'user_id', 'id'); 
   }
   
   public function attendances()

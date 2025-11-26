@@ -4,11 +4,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\LeaveRequestController;
-use App\Http\Controllers\EmployeeController;
 
 // Employees
-Route::get('/employees', [EmployeeController::class,'index']);
-Route::get('/employees/{id}', [EmployeeController::class,'show']);
+// Route::get('/employees', [EmployeeController::class,'index']);
+// Route::get('/employees/{id}', [EmployeeController::class,'show']);
 
 // Attendances
 Route::get('/attendances/report/{month}/{year}', [AttendanceController::class,'monthlyReport']);

@@ -18,7 +18,7 @@ export default function Sidebar() {
             <div className="px-6 py-5 border-b flex items-center gap-3">
                 <ApplicationLogo className="h-12 w-12" />
                 <div>
-                    <h1 className="text-lg font-bold text-blue-600">PRESENSI APP</h1>
+                    <h1 className="text-lg font-bold text-blue-600">DISDUKCAPIL</h1>
                     <p className="text-xs text-gray-500">DIY Yogyakarta</p>
                 </div>
             </div>

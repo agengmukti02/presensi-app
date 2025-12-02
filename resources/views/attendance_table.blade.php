@@ -126,14 +126,14 @@
 <body>
     <div class="header">
         @if(file_exists(public_path('logoYogyakarta.png')))
-            <img src="{{ public_path('logoYogyakarta.png') }}" alt="Logo DIY" class="header-logo">
+        <img src="{{ public_path('logoYogyakarta.png') }}" alt="Logo DIY" class="header-logo">
         @elseif(file_exists(public_path('logoYogyakarta.svg')))
-            <img src="{{ public_path('logoYogyakarta.svg') }}" alt="Logo DIY" class="header-logo">
+        <img src="{{ public_path('logoYogyakarta.svg') }}" alt="Logo DIY" class="header-logo">
         @elseif(file_exists(public_path('logos.png')))
-            <img src="{{ public_path('logos.png') }}" alt="Logo DIY" class="header-logo">
+        <img src="{{ public_path('logos.png') }}" alt="Logo DIY" class="header-logo">
         @endif
         <h3>PEMERINTAH DAERAH DAERAH ISTIMEWA YOGYAKARTA</h3>
-        <h2>LAPORAN PRESENSI PEGAWAI</h2>
+        <h2>LAPORAN PRESENSI {{ isset($employeeName) ? strtoupper($employeeName) : 'PEGAWAI' }}</h2>
         <p>Bulan: {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
     </div>
 

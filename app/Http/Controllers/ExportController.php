@@ -13,7 +13,7 @@ class ExportController extends Controller
     public function exportExcel($month, $year)
     {
         $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
-        
+
         // Prepare Headings
         $headings = ['No', 'Nama', 'NIP'];
         for ($i = 1; $i <= $daysInMonth; $i++) {
@@ -23,7 +23,7 @@ class ExportController extends Controller
         // Fetch Data
         $employees = Employee::with(['attendances' => function ($query) use ($month, $year) {
             $query->whereMonth('date', $month)
-                  ->whereYear('date', $year);
+                ->whereYear('date', $year);
         }])->get();
 
         $rows = $employees->map(function ($employee, $index) use ($daysInMonth) {
@@ -63,7 +63,7 @@ class ExportController extends Controller
 
         $employees = Employee::with(['attendances' => function ($query) use ($month, $year) {
             $query->whereMonth('date', $month)
-                  ->whereYear('date', $year);
+                ->whereYear('date', $year);
         }])->get();
 
         $rows = $employees->map(function ($employee, $index) use ($daysInMonth) {
@@ -102,7 +102,129 @@ class ExportController extends Controller
         ]);
 
         return $pdf->setPaper('legal', 'landscape')
-                   ->setOption('isRemoteEnabled', true)
-                   ->download("presensi_{$month}_{$year}.pdf");
+            ->setOption('isRemoteEnabled', true)
+            ->download("presensi_{$month}_{$year}.pdf");
+    }
+
+    public function exportExcelPegawai($month, $year)
+    {
+        // Validasi input
+        if (!is_numeric($month) || !is_numeric($year) || $month < 1 || $month > 12) {
+            abort(400, 'Invalid month or year');
+        }
+
+        $user = auth()->user();
+        if (!$user || !$user->employee) {
+            abort(403, 'Anda tidak terdaftar sebagai pegawai');
+        }
+        $employeeId = $user->employee->id;
+
+        $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
+
+        // Prepare Headings - NIP disembunyikan untuk keamanan
+        $headings = ['No', 'Nama'];
+        for ($i = 1; $i <= $daysInMonth; $i++) {
+            $headings[] = (string)$i;
+        }
+
+        // Fetch Data
+        $employee = Employee::with(['attendances' => function ($query) use ($month, $year) {
+            $query->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->orderBy('date', 'asc');
+        }])->findOrFail($employeeId);
+
+        $attendanceMap = $employee->attendances->keyBy(function ($attendance) {
+            return (int) Carbon::parse($attendance->date)->format('d');
+        });
+
+        // Data row - NIP tidak disertakan untuk keamanan
+        $row = [
+            1,
+            $employee->nama,
+        ];
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            if (isset($attendanceMap[$day])) {
+                $att = $attendanceMap[$day];
+                if ($att->status === 'hadir') {
+                    $row[] = $att->time_in ? Carbon::parse($att->time_in)->format('H:i') : 'Hadir';
+                } else {
+                    $row[] = strtoupper($att->status);
+                }
+            } else {
+                $row[] = '-';
+            }
+        }
+
+        $rows = collect([$row]);
+
+        $filename = "presensi_" . date('F_Y', mktime(0, 0, 0, $month, 1, $year)) . ".xlsx";
+        return Excel::download(new AttendanceExport($rows, $headings, $month, $year), $filename);
+    }
+
+    public function exportPdfPegawai($month, $year)
+    {
+        // Validasi input
+        if (!is_numeric($month) || !is_numeric($year) || $month < 1 || $month > 12) {
+            abort(400, 'Invalid month or year');
+        }
+
+        $user = auth()->user();
+        if (!$user || !$user->employee) {
+            abort(403, 'Anda tidak terdaftar sebagai pegawai');
+        }
+        $employeeId = $user->employee->id;
+
+        $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
+        $days = range(1, $daysInMonth);
+
+        $employee = Employee::with(['attendances' => function ($query) use ($month, $year) {
+            $query->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->orderBy('date', 'asc');
+        }])->findOrFail($employeeId);
+
+        $attendanceMap = $employee->attendances->keyBy(function ($attendance) {
+            return (int) Carbon::parse($attendance->date)->format('d');
+        });
+
+        // Data row - NIP di-mask untuk keamanan di PDF
+        $row = [
+            'no' => 1,
+            'name' => $employee->nama,
+            'nip' => '****' . substr($employee->nip, -4), // Mask NIP
+        ];
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $key = 'd' . $day;
+            if (isset($attendanceMap[$day])) {
+                $att = $attendanceMap[$day];
+                if ($att->status === 'hadir') {
+                    $row[$key] = $att->time_in ? Carbon::parse($att->time_in)->format('H:i') : 'Hadir';
+                } else {
+                    $row[$key] = strtoupper($att->status);
+                }
+            } else {
+                $row[$key] = null;
+            }
+        }
+
+        $rows = collect([$row]);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('attendance_table', [
+            'month' => $month,
+            'year' => $year,
+            'days' => $days,
+            'rows' => $rows,
+            'employeeName' => $employee->nama,
+            'title' => 'Laporan Presensi Pribadi'
+        ]);
+
+        $monthName = date('F_Y', mktime(0, 0, 0, $month, 1, $year));
+        $filename = "presensi_" . str_replace(' ', '_', $employee->nama) . "_" . $monthName . ".pdf";
+        return $pdf->setPaper('legal', 'landscape')
+            ->setOption('isRemoteEnabled', true)
+            ->download($filename);
     }
 }

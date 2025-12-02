@@ -53,8 +53,7 @@ class LeaveRequestController extends Controller
 
     public function approvalList()
     {
-        $leaveRequests = LeaveRequest::with('employee')
-            ->where('status', 'pending')
+        $leaveRequests = LeaveRequest::with(['employee', 'approvedBy'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -73,7 +72,7 @@ class LeaveRequestController extends Controller
 
         $employee = \App\Models\Employee::where('id', $request->user()->id)->first();
         if (!$employee) {
-             $employee = \App\Models\Employee::first();
+             return back()->withErrors(['message' => 'Anda tidak terdaftar sebagai pegawai.']);
         }
 
         LeaveRequest::create([

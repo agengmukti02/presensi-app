@@ -82,7 +82,7 @@ export default function Login({ status }) {
                 </div>
 
                 <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="w-full" disabled={processing}>
+                    <PrimaryButton className="px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 flex items-center gap-2" disabled={processing}>
                         Masuk
                     </PrimaryButton>
                 </div>

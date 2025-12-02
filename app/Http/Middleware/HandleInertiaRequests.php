@@ -29,10 +29,24 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    // Email disembunyikan dari inspect element untuk keamanan
+                    // 'email' => $user->email,
+                    'role' => $user->role,
+                    // NIP hanya tampilkan 4 digit terakhir di frontend
+                    'nip_masked' => $user->nip ? '****' . substr($user->nip, -4) : null,
+                ] : null,
+            ],
+            'flash' => [
+                'success' => $request->session()->get('flash.success'),
+                'message' => $request->session()->get('flash.message'),
             ],
             'flash' => [
                 'success' => $request->session()->get('flash.success'),
